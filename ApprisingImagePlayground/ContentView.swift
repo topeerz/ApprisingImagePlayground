@@ -6,12 +6,11 @@
 //
 
 import ImagePlayground
-import SwiftUI
 import Observation
+import SwiftUI
 import UIKit
 
-// TODO: do somethign cool with photos
-// import PhotosUI
+// TODO: do somethign cool with PhotosUI
 
 extension Image {
     init(from uiImage: UIImage?) {
@@ -73,22 +72,17 @@ struct ContentView: View {
                 Button("save") {
                     guard let generatedImage else { return }
 
-                    if let data = generatedImage.pngData() {
-                        generatedImageData = data
-                        showingDocumentPicker = true
+                    Task.detached(priority: .utility) { // pngData seems to be using .utility anwyay ...
+                        if let data = generatedImage.pngData() {
+                            await MainActor.run {
+                                generatedImageData = data
+                                showingDocumentPicker = true
+                            }
+                        }
                     }
-                    // TODO: show something to user while generating data and block him from other actions?
-//                    Task {
-//                        if let data = await getImageData(image: generatedImage) {
-//                            generatedImageData = data
-//                            showingDocumentPicker = true
-//                        }
-//                    }
                 }
                 .sheet(isPresented: $showingDocumentPicker) {
-                    // TODO: generatedImageDate is here nil ...
                     if let imageData = generatedImageData {
-//                    if let imageData = generatedImage?.pngData() {
                         DocumentPicker(imageData: imageData)
                     }
                 }
@@ -103,12 +97,6 @@ struct ContentView: View {
         }
     }
 
-//    func getImageData(image: UIImage) async -> Data? {
-//        return await Task {
-//            return image.pngData()
-//        }.value
-//    }
-
     struct DocumentPicker: UIViewControllerRepresentable {
         var imageData: Data
 
@@ -122,7 +110,9 @@ struct ContentView: View {
             return picker
         }
 
-        func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+        func updateUIViewController(
+            _ uiViewController: UIDocumentPickerViewController, context: Context
+        ) {}
 
         class Coordinator: NSObject, UIDocumentPickerDelegate {
             var parent: DocumentPicker
@@ -131,12 +121,15 @@ struct ContentView: View {
                 self.parent = parent
             }
 
-            func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            func documentPicker(
+                _ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]
+            ) {
                 guard let url = urls.first else { return }
                 // TODO: avoid priority inversion: pngData shouldn't block UI thread ...
-//                guard let data = parent.imageData else { return }
+                //                guard let data = parent.imageData else { return }
 
-                let fileurl = uniqueFileName(for: url.appendingPathComponent("image_1.png", conformingTo: .fileURL))
+                let fileurl = uniqueFileName(
+                    for: url.appendingPathComponent("image_1.png", conformingTo: .fileURL))
 
                 do {
                     try parent.imageData.write(to: fileurl)
@@ -165,8 +158,6 @@ struct ContentView: View {
             }
         }
     }
-
-
 }
 
 #Preview {
